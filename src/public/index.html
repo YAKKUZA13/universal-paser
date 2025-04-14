@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Универсальный Парсер Сайтов</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --container-bg: #171717;
+            --input-bg: #262626;
+            --text-color: #FAFAFA;
+            --label-color: #8A8A8A;
+            --button-color: #373737;
+            --button-hover: #525252;
+            --border-color: #404040;
+            --error-color: #D4D4D4;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: var(--text-color);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--label-color);
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--text-color);
+        }
+
+        .pagination-config {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: var(--container-bg);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        button {
+            background-color: var(--button-color);
+            color: var(--text-color);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: var(--button-hover);
+        }
+
+        .error {
+            color: var(--error-color);
+            margin-top: 10px;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: var(--text-color);
+        }
+
+        .loading::after {
+            content: "⏳";
+            animation: loading 1s infinite;
+        }
+
+        @keyframes loading {
+            0% { content: "⏳"; }
+            50% { content: "⌛"; }
+            100% { content: "⏳"; }
+        }
+
+        .selector-container {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: var(--container-bg);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .selector-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .selector-item input {
+            flex: 1;
+        }
+
+        .selector-item button {
+            width: auto;
+            padding: 8px 15px;
+            background-color: var(--button-color);
+        }
+
+        .selector-item button:hover {
+            background-color: var(--button-hover);
+        }
+
+        .add-selector-btn {
+            background-color: var(--button-color);
+            margin-top: 10px;
+        }
+
+        .add-selector-btn:hover {
+            background-color: var(--button-hover);
+        }
+
+        .selector-type {
+            margin-bottom: 10px;
+        }
+
+        .selector-type label {
+            display: inline-block;
+            margin-right: 15px;
+            color: var(--label-color);
+        }
+
+        .selector-type input {
+            width: auto;
+            margin-right: 5px;
+            accent-color: var(--button-color);
+        }
+
+        /* Стилизация скроллбара */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--container-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--button-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--button-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Универсальный Парсер Сайтов</h1>
+        <form id="parserForm">
+            <div class="form-group">
+                <label for="url">URL сайта:</label>
+                <input type="url" id="url" name="url" required placeholder="https://example.com">
+            </div>
+
+            <div class="form-group">
+                <label>Селекторы для парсинга:</label>
+                <div class="selector-type">
+                    <label>
+                        <input type="radio" name="selectorType" value="css" checked> CSS селектор
+                    </label>
+                    <label>
+                        <input type="radio" name="selectorType" value="html"> HTML теги
+                    </label>
+                </div>
+                
+                <div id="cssSelectorContainer" class="selector-container">
+                    <div class="selector-item">
+                        <input type="text" id="itemSelector" name="itemSelector" placeholder=".product-item">
+                        <button type="button" onclick="this.parentElement.remove()">Удалить</button>
+                    </div>
+                </div>
+                
+                <div id="htmlTagsContainer" class="selector-container" style="display: none;">
+                    <!-- Здесь будут добавляться селекторы тегов -->
+                </div>
+                
+                <button type="button" class="add-selector-btn" onclick="addSelector()">Добавить селектор</button>
+            </div>
+
+            <div class="form-group">
+                <label for="paginationType">Тип пагинации:</label>
+                <select id="paginationType" name="paginationType">
+                    <option value="query">Query-параметры (?page=1)</option>
+                    <option value="path">Path-пагинация (/page/1)</option>
+                    <option value="button">Кнопка "Следующая страница"</option>
+                    <option value="infinite">Бесконечная прокрутка</option>
+                </select>
+            </div>
+
+            <div id="queryConfig" class="pagination-config">
+                <div class="form-group">
+                    <label for="queryParam">Параметр страницы:</label>
+                    <input type="text" id="queryParam" name="queryParam" placeholder="page">
+                </div>
+            </div>
+
+            <div id="pathConfig" class="pagination-config">
+                <div class="form-group">
+                    <label for="pathPrefix">Префикс пути:</label>
+                    <input type="text" id="pathPrefix" name="pathPrefix" placeholder="page/">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="nextPageSelector">Селектор кнопки следующей страницы:</label>
+                <input type="text" id="nextPageSelector" name="nextPageSelector" placeholder=".pagination .next">
+            </div>
+
+            <div class="form-group">
+                <label for="maxPages">Максимальное количество страниц:</label>
+                <input type="number" id="maxPages" name="maxPages" value="1" min="1">
+            </div>
+
+            <div class="form-group">
+                <label for="delay">Задержка между запросами (мс):</label>
+                <input type="number" id="delay" name="delay" value="1000" min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="fileExtension">Формат файла:</label>
+                <select id="fileExtension" name="fileExtension">
+                    <option value="json">JSON</option>
+                    <option value="csv">CSV</option>
+                </select>
+            </div>
+
+            <button type="submit">Начать парсинг</button>
+        </form>
+
+        <div id="error" class="error"></div>
+        <div id="loading" class="loading"></div>
+    </div>
+
+    <script>
+        document.querySelectorAll('input[name="selectorType"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const cssContainer = document.getElementById('cssSelectorContainer');
+                const htmlContainer = document.getElementById('htmlTagsContainer');
+                
+                if (this.value === 'css') {
+                    cssContainer.style.display = 'block';
+                    htmlContainer.style.display = 'none';
+                } else {
+                    cssContainer.style.display = 'none';
+                    htmlContainer.style.display = 'block';
+                }
+            });
+        });
+
+        function addSelector() {
+            const selectorType = document.querySelector('input[name="selectorType"]:checked').value;
+            
+            if (selectorType === 'css') {
+                const cssContainer = document.getElementById('cssSelectorContainer');
+                const selectorItem = document.createElement('div');
+                selectorItem.className = 'selector-item';
+                
+                selectorItem.innerHTML = `
+                    <input type="text" placeholder=".product-item" class="css-selector">
+                    <button type="button" onclick="this.parentElement.remove()">Удалить</button>
+                `;
+                
+                cssContainer.appendChild(selectorItem);
+            } else {
+                const htmlContainer = document.getElementById('htmlTagsContainer');
+                const selectorItem = document.createElement('div');
+                selectorItem.className = 'selector-item';
+                
+                selectorItem.innerHTML = `
+                    <input type="text" placeholder="Тег (например, p, div)" class="tag-input">
+                    <input type="text" placeholder="CSS селектор (опционально)" class="selector-input">
+                    <input type="text" placeholder="Атрибут (опционально)" class="attribute-input">
+                    <button type="button" onclick="this.parentElement.remove()">Удалить</button>
+                `;
+                
+                htmlContainer.appendChild(selectorItem);
+            }
+        }
+
+        document.getElementById('paginationType').addEventListener('change', function() {
+            const queryConfig = document.getElementById('queryConfig');
+            const pathConfig = document.getElementById('pathConfig');
+            
+            queryConfig.style.display = 'none';
+            pathConfig.style.display = 'none';
+
+            if (this.value === 'query') {
+                queryConfig.style.display = 'block';
+            } else if (this.value === 'path') {
+                pathConfig.style.display = 'block';
+            }
+        });
+
+        document.getElementById('parserForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const errorDiv = document.getElementById('error');
+            const loadingDiv = document.getElementById('loading');
+            errorDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+
+            const selectorType = document.querySelector('input[name="selectorType"]:checked').value;
+            
+            let itemSelector = '';
+            let tagSelectors = [];
+            
+            if (selectorType === 'css') {
+                const cssSelectors = Array.from(document.querySelectorAll('#cssSelectorContainer .selector-item input')).map(input => input.value);
+                itemSelector = cssSelectors.join(', ');
+                console.log('Собранные CSS селекторы:', itemSelector);
+            } else {
+                const tagItems = document.querySelectorAll('#htmlTagsContainer .selector-item');
+                tagSelectors = Array.from(tagItems).map(item => {
+                    const tag = item.querySelector('.tag-input').value;
+                    const selectorValue = item.querySelector('.selector-input').value;
+                    const attribute = item.querySelector('.attribute-input').value;
+                    
+                    return {
+                        tag,
+                        selector: selectorValue || undefined,
+                        attribute: attribute || undefined
+                    };
+                }).filter(config => config.tag);
+                
+                if (tagSelectors.length === 0) {
+                    itemSelector = 'body';
+                } else {
+                    itemSelector = tagSelectors[0].tag;
+                }
+            }
+
+            const formData = {
+                url: document.getElementById('url').value,
+                itemSelector: itemSelector,
+                paginationType: document.getElementById('paginationType').value,
+                paginationConfig: {
+                    nextPageSelector: document.getElementById('nextPageSelector').value
+                },
+                tagSelectors: tagSelectors,
+                fileExtension: document.getElementById('fileExtension').value,
+                maxPages: document.getElementById('maxPages').value,
+                delay: document.getElementById('delay').value
+            };
+
+            if (formData.paginationType === 'query') {
+                formData.paginationConfig.queryParam = document.getElementById('queryParam').value;
+            } else if (formData.paginationType === 'path') {
+                formData.paginationConfig.pathPrefix = document.getElementById('pathPrefix').value;
+            }
+
+            try {
+                const response = await fetch('/parse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Ошибка при парсинге');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `parsed-data.${formData.fileExtension}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        });
+
+        addSelector();
+    </script>
+</body>
+</html> 
