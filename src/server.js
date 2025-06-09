@@ -1,200 +1,204 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
-const UniversalParser = require('./index');
+require('dotenv').config();
+
+// Импортируем новые модули
+const config = require('./config/app.config');
+const ParsingController = require('./controllers/ParsingController');
+const { errorHandler, notFoundHandler, requestLogger } = require('./middleware/errorHandler');
+const Logger = require('./utils/logger');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = config.server.port;
 
-app.use(bodyParser.json());
+// Инициализируем контроллер
+const parsingController = new ParsingController();
+
+// Middleware
+app.use(requestLogger);
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Главная страница
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.post('/parse', async (req, res) => {
-    try {
-        const {
-            url,
-            itemSelector,
-            paginationType,
-            paginationConfig,
-            fileExtension,
-            maxPages,
-            delay,
-            tagSelectors
-        } = req.body;
+// API Routes - Основные
+app.post('/parse', (req, res, next) => parsingController.parse(req, res, next));
+app.post('/validate-url', (req, res, next) => parsingController.validateUrl(req, res, next));
+app.post('/estimate-time', (req, res, next) => parsingController.estimateTime(req, res, next));
+app.get('/strategies', (req, res, next) => parsingController.getStrategies(req, res, next));
+app.post('/parse-with-strategy', (req, res, next) => parsingController.parseWithStrategy(req, res, next));
 
-        const selector = itemSelector && itemSelector.trim() ? itemSelector.trim() : 'body';
-        console.log('Используемый селектор:', selector);
+// API Routes - Интеллектуальные возможности
+app.post('/analyze-structure', (req, res, next) => parsingController.analyzeStructure(req, res, next));
+app.post('/parsing-preview', (req, res, next) => parsingController.getParsingPreview(req, res, next));
 
-        console.log('Получены данные для парсинга:', {
-            url,
-            itemSelector: selector,
-            tagSelectors: JSON.stringify(tagSelectors, null, 2)
-        });
+// API Routes - XPath поддержка
+app.post('/validate-xpath', (req, res, next) => parsingController.validateXPath(req, res, next));
+app.post('/convert-css-to-xpath', (req, res, next) => parsingController.convertCSSToXPath(req, res, next));
 
-        const parser = new UniversalParser({
-            maxPages: parseInt(maxPages) || 1,
-            delay: parseInt(delay) || 1000
-        });
-
-        const config = {
-            paginationType,
-            paginationConfig,
-            itemSelector: selector,
-            tagSelectors: tagSelectors || [],
-            extractData: ($element, $) => {
-                console.log('Начало извлечения данных');
-                console.log('HTML элемента:', $element.html());
-                
-                function extractElementData($el) {
-                    const result = {};
-                    
-                    const attributes = $el.attr();
-                    if (attributes) {
-                        result.attributes = attributes;
-                    }
-                    
-                    const text = $el.clone().children().remove().end().text().trim();
-                    if (text) {
-                        result.text = text;
-                    }
-                    
-                    const html = $el.html();
-                    if (html) {
-                        result.html = html;
-                    }
-                    
-                    const children = $el.children();
-                    if (children.length > 0) {
-                        result.children = {};
-                        
-                        children.each((index, child) => {
-                            const $child = $(child);
-                            const tagName = $child.prop('tagName').toLowerCase();
-                            const className = $child.attr('class');
-                            const id = $child.attr('id');
-                            
-                            let childKey = tagName;
-                            if (className) {
-                                childKey += `.${className.replace(/\s+/g, '.')}`;
-                            }
-                            if (id) {
-                                childKey += `#${id}`;
-                            }
-                            
-                            if (result.children[childKey]) {
-                                childKey = `${childKey}_${index}`;
-                            }
-                            
-                            result.children[childKey] = extractElementData($child);
-                        });
-                    }
-                    
-                    return result;
-                }
-                
-                const data = extractElementData($element);
-                
-                console.log('Итоговые извлеченные данные:', JSON.stringify(data, null, 2));
-                return data;
-            }
-        };
-
-        let items = await parser.parse(url, config);
-
-        function cleanStringForCSV(str) {
-            if (typeof str !== 'string') {
-                return str;
-            }
-            return str.replace(/[^\wа-яА-ЯёЁ\s]/g, ' ')
-                     .replace(/\s+/g, ' ')
-                     .trim();
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        version: require('../package.json').version,
+        features: {
+            strategies: ['cheerio', 'puppeteer', 'xpath', 'smart-puppeteer'],
+            capabilities: [
+                'Интеллектуальный анализ структуры',
+                'XPath селекторы',
+                'SPA поддержка',
+                'Fallback стратегии',
+                'Валидация данных',
+                'Infinite scrolling'
+            ]
         }
-
-        function cleanObjectForCSV(obj) {
-            if (Array.isArray(obj)) {
-                return obj.map(item => cleanObjectForCSV(item));
-            }
-            if (obj !== null && typeof obj === 'object') {
-                const cleaned = {};
-                for (const [key, value] of Object.entries(obj)) {
-                    cleaned[key] = cleanObjectForCSV(value);
-                }
-                return cleaned;
-            }
-            return cleanStringForCSV(obj);
-        }
-
-        function flattenObject(obj, prefix = '') {
-            let flattened = {};
-            
-            for (const [key, value] of Object.entries(obj)) {
-                const newKey = prefix ? `${prefix}.${key}` : key;
-                
-                if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-                    Object.assign(flattened, flattenObject(value, newKey));
-                } else if (Array.isArray(value)) {
-                    flattened[newKey] = value.join('; ');
-                } else {
-                    flattened[newKey] = value;
-                }
-            }
-            
-            return flattened;
-        }
-
-        function convertToCSV(data) {
-            if (!Array.isArray(data)) {
-                data = [data];
-            }
-
-            const flattenedData = data.map(item => flattenObject(item));
-
-            const headers = [...new Set(
-                flattenedData.reduce((acc, item) => [...acc, ...Object.keys(item)], [])
-            )];
-
-            const csvRows = [
-                headers.join(','),
-                ...flattenedData.map(item =>
-                    headers.map(header => {
-                        const value = item[header] || '';
-                        const escapedValue = String(value).replace(/"/g, '""');
-                        return escapedValue.includes(',') ? `"${escapedValue}"` : escapedValue;
-                    }).join(',')
-                )
-            ];
-
-            return csvRows.join('\n');
-        }
-
-        if (fileExtension === 'csv') {
-            console.log('Очистка данных для CSV формата...');
-            items = cleanObjectForCSV(items);
-        }
-
-        const contentType = fileExtension === 'json' ? 'application/json' : 'text/csv';
-        const fileName = `parsed-data.${fileExtension}`;
-
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-        if (fileExtension === 'json') {
-            res.json(items);
-        } else {
-            const csv = convertToCSV(items);
-            res.send(csv);
-        }
-
-    } catch (error) {
-        console.error('Ошибка при парсинге:', error);
-        res.status(500).json({ error: error.message });
-    }
+    });
 });
 
+// API info endpoint
+app.get('/api/info', (req, res) => {
+    res.json({
+        name: 'Universal Web Parser API v2.0',
+        version: require('../package.json').version,
+        description: 'Усовершенствованный парсер с ИИ возможностями',
+        endpoints: {
+            // Основные endpoints
+            'POST /parse': {
+                description: 'Основной парсинг с автоматическим выбором стратегии',
+                features: ['Fallback стратегии', 'Валидация данных', 'Интеллектуальный анализ']
+            },
+            'POST /validate-url': {
+                description: 'Валидация URL на доступность',
+                features: ['Проверка доступности', 'Диагностика ошибок']
+            },
+            'POST /estimate-time': {
+                description: 'Оценка времени парсинга',
+                features: ['Умная оценка', 'Учет стратегий', 'Анализ функций']
+            },
+            'GET /strategies': {
+                description: 'Список доступных стратегий парсинга',
+                features: ['Детальная информация', 'Возможности стратегий']
+            },
+            'POST /parse-with-strategy': {
+                description: 'Парсинг с определенной стратегией',
+                features: ['Принудительный выбор', 'Расширенные настройки']
+            },
+            
+            // Интеллектуальные возможности
+            'POST /analyze-structure': {
+                description: 'Анализ структуры страницы с ИИ',
+                features: ['Определение типа сайта', 'Предложение селекторов', 'Анализ паттернов']
+            },
+            'POST /parsing-preview': {
+                description: 'Предварительный просмотр результатов парсинга',
+                features: ['Быстрый анализ', 'Структура данных', 'Рекомендации']
+            },
+            
+            // XPath поддержка
+            'POST /validate-xpath': {
+                description: 'Валидация XPath выражений',
+                features: ['Синтаксическая проверка', 'Оптимизация']
+            },
+            'POST /convert-css-to-xpath': {
+                description: 'Конвертация CSS селекторов в XPath',
+                features: ['Автоматическая конвертация', 'Валидация результата']
+            },
+            
+            // Системные
+            'GET /health': {
+                description: 'Проверка работоспособности сервиса',
+                features: ['Статус системы', 'Информация о возможностях']
+            },
+            'GET /api/info': {
+                description: 'Информация об API',
+                features: ['Документация endpoints', 'Описание возможностей']
+            }
+        },
+        
+        strategies: {
+            'cheerio': {
+                name: 'Cheerio (Быстрый)',
+                features: ['Быстрый', 'Статический HTML', 'CSS селекторы'],
+                use_cases: ['Статические сайты', 'Быстрый парсинг', 'Большие объемы данных']
+            },
+            'puppeteer': {
+                name: 'Puppeteer (JavaScript поддержка)',
+                features: ['JavaScript', 'Динамический контент', 'Автоскроллинг'],
+                use_cases: ['Динамические сайты', 'JavaScript приложения', 'Интерактивный контент']
+            },
+            'xpath': {
+                name: 'XPath (Продвинутые селекторы)',
+                features: ['XPath селекторы', 'Продвинутые запросы', 'Конвертация CSS в XPath'],
+                use_cases: ['Сложные селекторы', 'Точная навигация по DOM', 'Условные выборки']
+            },
+            'smart-puppeteer': {
+                name: 'Smart Puppeteer (ИИ + SPA поддержка)',
+                features: ['ИИ анализ', 'SPA поддержка', 'Infinite scrolling', 'Fallback стратегии'],
+                use_cases: ['SPA приложения', 'Сложные сайты', 'Интеллектуальный анализ']
+            }
+        },
+        
+        new_features: {
+            'v2.0': [
+                'Интеллектуальный анализ структуры страниц',
+                'Поддержка XPath селекторов', 
+                'Улучшенная обработка SPA',
+                'Fallback стратегии для надежности',
+                'Автоматическая валидация и очистка данных',
+                'Предварительный просмотр результатов',
+                'Infinite scrolling поддержка',
+                'Расширенное логирование и мониторинг'
+            ]
+        }
+    });
+});
+
+// 404 handler
+app.use(notFoundHandler);
+
+// Error handler
+app.use(errorHandler);
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    Logger.info('Получен сигнал SIGTERM, завершаем работу сервера...');
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    Logger.info('Получен сигнал SIGINT, завершаем работу сервера...');
+    process.exit(0);
+});
+
+// Запуск сервера
 app.listen(port, () => {
-    console.log(`Сервер запущен на порту ${port}`);
+    Logger.info('Усовершенствованный сервер запущен', {
+        port: port,
+        environment: process.env.NODE_ENV || 'development',
+        nodeVersion: process.version,
+        version: require('../package.json').version,
+        features: {
+            strategies: 4,
+            intelligence: true,
+            xpath_support: true,
+            spa_support: true,
+            data_validation: true
+        }
+    });
+    
+    Logger.info('Доступные endpoints v2.0:', {
+        main: `http://localhost:${port}/`,
+        api: `http://localhost:${port}/api/info`,
+        health: `http://localhost:${port}/health`,
+        analyze: `http://localhost:${port}/analyze-structure`,
+        preview: `http://localhost:${port}/parsing-preview`,
+        xpath: `http://localhost:${port}/validate-xpath`
+    });
 }); 
