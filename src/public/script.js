@@ -1,4 +1,3 @@
-// Universal Web Parser v2.0 - Frontend JavaScript
 class ParserUI {
     constructor() {
         this.currentTab = 'basic';
@@ -19,7 +18,6 @@ class ParserUI {
         this.setupMonitoring();
     }
 
-    // Tab Management
     setupTabs() {
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -30,48 +28,39 @@ class ParserUI {
     }
 
     switchTab(tabName) {
-        // Remove active class from all tabs and content
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-        // Add active class to clicked tab and corresponding content
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
         document.getElementById(tabName).classList.add('active');
 
         this.currentTab = tabName;
     }
 
-    // Form Handlers
     setupFormHandlers() {
         const form = document.getElementById('parserForm');
         form.addEventListener('submit', (e) => this.handleParsing(e));
 
-        // Strategy selection
         document.getElementById('strategy').addEventListener('change', (e) => {
             this.updateStrategyInfo(e.target.value);
         });
 
-        // URL validation
         document.getElementById('validateUrlBtn').addEventListener('click', () => {
             this.validateUrl();
         });
 
-        // AI Analysis
         document.getElementById('analyzeBtn').addEventListener('click', () => {
             this.runAnalysis();
         });
 
-        // Preview
         document.getElementById('previewBtn').addEventListener('click', () => {
             this.runPreview();
         });
 
-        // Time estimation
         document.getElementById('estimateBtn').addEventListener('click', () => {
             this.estimateTime();
         });
 
-        // Tool buttons
         document.getElementById('testSelectorBtn').addEventListener('click', () => {
             this.testSelector();
         });
@@ -88,18 +77,15 @@ class ParserUI {
             this.importConfig();
         });
 
-        // AI Analysis tab
         document.getElementById('runAnalysisBtn').addEventListener('click', () => {
             this.runStructureAnalysis();
         });
 
-        // Preview tab
         document.getElementById('runPreviewBtn').addEventListener('click', () => {
             this.runPreviewAnalysis();
         });
     }
 
-    // Form Validation
     setupValidation() {
         const urlInput = document.getElementById('url');
         urlInput.addEventListener('blur', () => {
@@ -116,7 +102,6 @@ class ParserUI {
         });
     }
 
-    // XPath Tools
     setupXPathTools() {
         document.getElementById('addXPathBtn').addEventListener('click', () => {
             this.addXPathSelector();
@@ -130,7 +115,6 @@ class ParserUI {
             this.validateXPathSelectors();
         });
 
-        // XPath type change handler
         document.addEventListener('change', (e) => {
             if (e.target.classList.contains('xpath-type')) {
                 const attributeInput = e.target.parentElement.querySelector('.xpath-attribute');
@@ -144,7 +128,6 @@ class ParserUI {
             }
         });
 
-        // Remove XPath selector
         document.addEventListener('click', (e) => {
             if (e.target.closest('.remove-xpath')) {
                 e.target.closest('.selector-item').remove();
@@ -152,9 +135,7 @@ class ParserUI {
         });
     }
 
-    // Modal Management
     setupModals() {
-        // CSS to XPath modal
         const modal = document.getElementById('cssToXPathModal');
         const closeButtons = modal.querySelectorAll('.modal-close');
         
@@ -164,12 +145,10 @@ class ParserUI {
             });
         });
 
-        // Convert button
         document.getElementById('convertBtn').addEventListener('click', () => {
             this.convertCSSToXPath();
         });
 
-        // Close modal on backdrop click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.classList.remove('active');
@@ -177,7 +156,6 @@ class ParserUI {
         });
     }
 
-    // Pagination Configuration
     setupPaginationConfig() {
         const paginationType = document.getElementById('paginationType');
         paginationType.addEventListener('change', () => {
@@ -186,12 +164,10 @@ class ParserUI {
     }
 
     updatePaginationConfig(type) {
-        // Hide all config sections
         document.querySelectorAll('.config-section').forEach(section => {
             section.classList.remove('active');
         });
 
-        // Show relevant config section
         if (type !== 'none') {
             const configId = type + 'Config';
             const configSection = document.getElementById(configId);
@@ -201,7 +177,6 @@ class ParserUI {
         }
     }
 
-    // Load Available Strategies
     async loadStrategies() {
         try {
             const response = await fetch('/strategies');
@@ -209,12 +184,10 @@ class ParserUI {
             
             const strategySelect = document.getElementById('strategy');
             
-            // Clear existing options (except auto)
             const autoOption = strategySelect.querySelector('option[value=""]');
             strategySelect.innerHTML = '';
             strategySelect.appendChild(autoOption);
             
-            // Add strategy options
             data.strategies.forEach(strategy => {
                 const option = document.createElement('option');
                 option.value = strategy.name;
@@ -240,7 +213,6 @@ class ParserUI {
         document.getElementById('strategyDescription').textContent = description;
     }
 
-    // URL Validation
     async validateUrl() {
         const url = document.getElementById('url').value;
         if (!url) {
@@ -286,7 +258,6 @@ class ParserUI {
     }
 
     validateSelector(selector) {
-        // Basic CSS selector validation
         try {
             document.querySelector(selector);
             return true;
@@ -296,7 +267,6 @@ class ParserUI {
         }
     }
 
-    // AI Analysis
     async runAnalysis() {
         const url = document.getElementById('url').value;
         if (!url) {
@@ -304,7 +274,6 @@ class ParserUI {
             return;
         }
 
-        // Switch to AI tab and run analysis
         this.switchTab('ai');
         document.getElementById('analyzeUrl').value = url;
         this.runStructureAnalysis();
@@ -439,7 +408,6 @@ class ParserUI {
         const selectors = this.analysisResults.suggestedSelectors;
         let applied = false;
         
-        // Apply main selector
         if (selectors.products && selectors.products.selector) {
             document.getElementById('itemSelector').value = selectors.products.selector;
             applied = true;
@@ -454,23 +422,19 @@ class ParserUI {
             applied = true;
         }
 
-        // Apply recommended strategy based on page type
         if (this.analysisResults.pageType) {
             const strategySelect = document.getElementById('strategy');
             
             switch (this.analysisResults.pageType) {
                 case 'ecommerce':
                 case 'social':
-                    // Use smart-puppeteer for dynamic sites
                     strategySelect.value = 'smart-puppeteer';
                     break;
                 case 'news':
                 case 'blog':
-                    // Use cheerio for static content
                     strategySelect.value = 'cheerio';
                     break;
                 default:
-                    // Auto detection
                     strategySelect.value = '';
             }
             
@@ -478,13 +442,11 @@ class ParserUI {
             applied = true;
         }
 
-        // Enable smart analysis if high confidence
         if (this.analysisResults.confidence >= 0.7) {
             document.getElementById('enableSmartAnalysis').checked = true;
             applied = true;
         }
 
-        // Apply recommended settings from analysis
         if (this.analysisResults.recommendations) {
             this.analysisResults.recommendations.forEach(rec => {
                 if (rec.type === 'spa') {
@@ -506,9 +468,7 @@ class ParserUI {
             });
         }
 
-        // Create XPath selectors if available
         if (selectors.xpath && Array.isArray(selectors.xpath)) {
-            // Clear existing XPath selectors
             document.getElementById('xpathSelectors').innerHTML = '';
             
             selectors.xpath.forEach(xpathConfig => {
@@ -527,12 +487,10 @@ class ParserUI {
             applied = true;
         }
 
-        // Switch to basic tab to show applied settings
         if (applied) {
             this.switchTab('basic');
             this.showNotification('Настройки из ИИ анализа применены успешно', 'success');
             
-            // Log applied settings for debugging
             console.log('Applied AI analysis settings:', {
                 mainSelector: document.getElementById('itemSelector').value,
                 strategy: document.getElementById('strategy').value,
@@ -545,7 +503,6 @@ class ParserUI {
         }
     }
 
-    // Preview Functionality
     async runPreview() {
         const formData = this.getFormData();
         if (!formData.url) {
@@ -676,7 +633,6 @@ class ParserUI {
         `;
     }
 
-    // Time Estimation
     async estimateTime() {
         const formData = this.getFormData();
         
@@ -699,7 +655,6 @@ class ParserUI {
         }
     }
 
-    // XPath Tools
     addXPathSelector() {
         const container = document.getElementById('xpathSelectors');
         const selectorItem = document.createElement('div');
@@ -792,7 +747,6 @@ class ParserUI {
         }
     }
 
-    // Main Parsing Function
     async handleParsing(e) {
         e.preventDefault();
         
@@ -824,7 +778,6 @@ class ParserUI {
                 throw new Error(error.error || 'Ошибка при парсинге');
             }
 
-            // Download file
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -848,7 +801,6 @@ class ParserUI {
     }
 
     getFormData() {
-        // Get XPath selectors
         const xpathSelectors = [];
         document.querySelectorAll('#xpathSelectors .selector-item').forEach(item => {
             const xpath = item.querySelector('.xpath-input').value;
@@ -865,7 +817,6 @@ class ParserUI {
             }
         });
 
-        // Get pagination config
         const paginationType = document.getElementById('paginationType').value;
         const paginationConfig = {};
 
@@ -918,7 +869,6 @@ class ParserUI {
         return true;
     }
 
-    // Monitoring
     setupMonitoring() {
         this.monitoringData = {
             totalRequests: 0,
@@ -982,7 +932,6 @@ class ParserUI {
         document.getElementById('logsContainer').innerHTML = '';
     }
 
-    // Tool Functions
     async testSelector() {
         const selector = document.getElementById('itemSelector').value;
         const url = document.getElementById('url').value;
@@ -992,7 +941,6 @@ class ParserUI {
             return;
         }
 
-        // Use preview functionality for testing
         this.runPreview();
     }
 
@@ -1002,7 +950,6 @@ class ParserUI {
             return;
         }
 
-        // Generate basic schema from preview data
         const schema = {};
         const items = this.previewResults.items;
 
@@ -1017,7 +964,6 @@ class ParserUI {
             });
         }
 
-        // Download schema
         const schemaBlob = new Blob([JSON.stringify(schema, null, 2)], { 
             type: 'application/json' 
         });
@@ -1076,7 +1022,6 @@ class ParserUI {
     }
 
     loadConfig(config) {
-        // Load basic settings
         if (config.url) document.getElementById('url').value = config.url;
         if (config.itemSelector) document.getElementById('itemSelector').value = config.itemSelector;
         if (config.strategy) document.getElementById('strategy').value = config.strategy;
@@ -1084,23 +1029,18 @@ class ParserUI {
         if (config.delay) document.getElementById('delay').value = config.delay;
         if (config.fileExtension) document.getElementById('fileExtension').value = config.fileExtension;
 
-        // Load advanced settings
         if (config.paginationType) {
             document.getElementById('paginationType').value = config.paginationType;
             this.updatePaginationConfig(config.paginationType);
         }
 
-        // Load checkboxes
         if (config.spa !== undefined) document.getElementById('spa').checked = config.spa;
         if (config.infiniteScrolling !== undefined) document.getElementById('infiniteScrolling').checked = config.infiniteScrolling;
         if (config.enableSmartAnalysis !== undefined) document.getElementById('enableSmartAnalysis').checked = config.enableSmartAnalysis;
 
-        // Load XPath selectors
         if (config.xpathSelectors && config.xpathSelectors.length > 0) {
-            // Clear existing selectors
             document.getElementById('xpathSelectors').innerHTML = '';
             
-            // Add loaded selectors
             config.xpathSelectors.forEach(selector => {
                 this.addXPathSelector();
                 const lastItem = document.querySelector('#xpathSelectors .selector-item:last-child');
@@ -1114,7 +1054,6 @@ class ParserUI {
         }
     }
 
-    // Utility Functions
     inferFieldType(value) {
         if (value === null || value === undefined) return 'text';
         if (typeof value === 'number') return 'number';
@@ -1154,7 +1093,6 @@ class ParserUI {
         return labels[key] || key;
     }
 
-    // UI Utilities
     showLoading() {
         document.getElementById('loadingOverlay').classList.add('active');
     }
@@ -1175,21 +1113,18 @@ class ParserUI {
         
         container.appendChild(notification);
         
-        // Auto remove after 5 seconds
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.parentNode.removeChild(notification);
             }
         }, 5000);
         
-        // Manual close
         notification.querySelector('.notification-close').addEventListener('click', () => {
             notification.parentNode.removeChild(notification);
         });
     }
 }
 
-// Initialize the application
 let parserUI;
 document.addEventListener('DOMContentLoaded', () => {
     parserUI = new ParserUI();

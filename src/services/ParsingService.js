@@ -56,7 +56,7 @@ class ParsingService {
         // Выбираем стратегию парсинга
         const strategy = this.selectStrategy(parseRequest);
         
-        // Определяем правильное имя стратегии (ключ из Map, а не имя класса)
+        // Определяем правильное имя стратегии 
         let strategyName = null;
         for (const [key, value] of this.strategies.entries()) {
             if (value === strategy) {
